@@ -1,154 +1,125 @@
-# Feature-Shrinking CNN (MNIST)
+# Inside the CNN
+## Feature-Shrinking CNN Interactive Visualization (MNIST)
 
-A lightweight TensorFlow/Keras Convolutional Neural Network for classifying 28×28 grayscale handwritten digits (MNIST, classes 0–9). Spatial dimensions are reduced using **strided convolution and valid padding**—**no pooling layers** are used.
+A Python-first interactive visualization of a **real trained TensorFlow/Keras CNN** classifying handwritten digits (MNIST, 0–9). The central experience animates how a drawn/uploaded digit travels through the actual network: **input tensor → Conv1 → Conv2 → Flatten → Dense/Softmax**.
+
+- **No retraining. No architecture changes. No fabricated outputs.**
+- All feature maps, convolution math, activations, logits, and probabilities come from the existing trained model at `models/best_mnist_cnn.keras` (fallback `models/final_mnist_cnn.keras`).
+- Animation is rendered in-browser (HTML5 Canvas/CSS via a lightweight Streamlit component); **all ML inference and tensor math run in Python**.
 
 ## Project overview
-- **Model:** Sequential CNN defined in `model.py` (`build_model()`), compiled with Adam, sparse categorical cross-entropy, and accuracy.
-- **Dataset:** MNIST handwritten digits loaded via `tensorflow.keras.datasets.mnist`, cached locally under `data/mnist/` to avoid repeated downloads.
-- **Pipeline:** `train.py` (download/cache/preprocess/train/save), `evaluate.py` (test metrics/reports), `visualize.py` (curves, samples, predictions, feature maps).
-- **Artifacts:** trained models in `models/`, metrics/plots in `results/`.
+This project extends the existing Feature-Shrinking CNN MNIST repository with an interactive visualization:
+- **Main experience:** connected forward-pass animation showing the digit moving through every CNN stage with actual tensors and filter sweeps.
+- **Feature Map Explorer:** inspect all 16 Conv1 (14×14) and 32 Conv2 (12×12) real activation maps.
+- **Architecture Explorer:** real layer metadata, shapes, parameters, and dimension-shrink explanations from the loaded model.
+- **Prediction Explorer:** actual softmax probabilities for all 10 classes.
+- **Training & Evaluation Dashboard:** preserved results loaded from `results/` artifacts (no regenerated/fabricated metrics).
 
-## CNN architecture (unchanged)
-| Layer | Configuration | Output shape (batch excluded) |
+## CNN architecture (preserved, unchanged)
+| Stage | Configuration | Output shape |
 |---|---|---:|
 | Input | Grayscale image | `28 × 28 × 1` |
-| Conv2D `conv_1` | 16 filters, `3×3`, stride `2×2`, padding `same`, ReLU | `14 × 14 × 16` |
-| Conv2D `conv_2` | 32 filters, `3×3`, stride `1×1`, padding `valid`, ReLU | `12 × 12 × 32` |
-| Flatten `flatten` | Convert feature maps to vector | `4608` |
+| Conv2D `conv_1` | 16 filters, 3×3, stride 2, padding **same**, ReLU | `14 × 14 × 16` |
+| Conv2D `conv_2` | 32 filters, 3×3, stride 1, padding **valid**, ReLU | `12 × 12 × 32` |
+| Flatten `flatten` | 12 × 12 × 32 | `4,608` |
 | Dense `predictions` | 10 units, softmax | `10` |
 
-- **API:** `tf.keras.Sequential` only. **No pooling, BatchNormalization, or Dropout.**
-- **Model I/O:** input `(None, 28, 28, 1)` → output `(None, 10)`.
-- **Parameters:** Total/trainable **50,890** (198.79 KB), non-trainable **0**.
+- **Sequential API (Keras/TensorFlow)**, **50,890 trainable parameters**, **0 pooling layers**, no BatchNorm/Dropout.
+- Spatial downsampling comes from **strided convolution** (Conv1) and **valid padding** (Conv2).
 
-### Feature-map dimensions (spatial shrinking)
-- Original input: **28×28×1**
-- After Conv1 (stride 2, same): **14×14×16**
-- After Conv2 (stride 1, valid): **12×12×32** (border reduction without pooling)
-- Flattened features: **12 × 12 × 32 = 4,608**
+## Technology stack
+- **Python, TensorFlow/Keras**: model loading, inference, intermediate tensor extraction, convolution math verification.
+- **NumPy, Pillow**: preprocessing and tensor/image operations.
+- **Streamlit**: application UI, layout, session state, caching.
+- **streamlit-drawable-canvas**: interactive digit drawing (mouse/touch).
+- **Plotly / Matplotlib**: charts and feature-map visualizations.
+- **HTML5 Canvas + CSS + requestAnimationFrame** (custom Streamlit component): smooth browser-side animation of precomputed data.
+- **pytest**: automated tests.
 
-## Dataset information and source
-- **Source:** Official MNIST via `tensorflow.keras.datasets.mnist` (loaded with `mnist.load_data()`).
-- **Total:** 70,000 images (28×28 grayscale, 1 channel), 10 classes (digits 0–9).
-- **Split (preserved):** 60,000 train / 10,000 test.
-- **Local storage (cached, not committed):** `data/mnist/x_train.npy`, `y_train.npy`, `x_test.npy`, `y_test.npy`.
+## Repository layout (key files)
+- `app.py` — main Streamlit app (“Inside the CNN”).
+- `model.py` — CNN definition (`build_model()`), architecture preserved.
+- `visualization/` — inference & extraction (`inference.py`, `tensor_extraction.py`), manual/verified convolution math (`convolution_math.py`), animation payload preparation (`animation_data.py`), preprocessing (`preprocessing.py`), browser renderer (`rendering.py`).
+- `components/` — UI modules: drawing/input, feature maps, architecture, prediction, dashboard, styles.
+- `frontend/` — shared helpers reused for artifact/model loading and dashboard utilities.
+- `models/` — trained checkpoints (`best_mnist_cnn.keras`, `final_mnist_cnn.keras`).
+- `results/` — training/evaluation artifacts and figures.
+- `data/mnist/` — cached MNIST arrays (`.npy`, git-ignored).
+- `tests/` — architecture and visualization/inference/math tests.
+- `train.py`, `evaluate.py`, `visualize.py` — existing training/evaluation/visualization scripts (preserved).
 
-## Installation instructions
-Use the existing virtual environment (`.venv`) when present.
+## Installation
+Use the existing virtual environment when present.
 
 ```bash
-source .venv/bin/activate
+cd /secondary/feature-shrinking-cnn
+source .venv/bin/activate        # bash/zsh
+# or (fish): source .venv/bin/activate.fish
 pip install -r requirements.txt
 ```
 
-Dependencies (see `requirements.txt`): `tensorflow`, `pytest`, `numpy`, `matplotlib`, `scikit-learn`.
+Verified environment includes TensorFlow (CPU build), Streamlit, streamlit-drawable-canvas, Plotly, Matplotlib, scikit-learn, NumPy, Pillow, pandas, pytest. Keep TensorFlow version compatible with your platform; do **not** change the CNN architecture or weights.
 
-> Note: in the verified environment, TensorFlow resolved to a CPU build (`tensorflow-cpu 2.22.0rc0`, Python 3.14). Use a compatible stable TensorFlow for your platform if preferred; keep the CNN architecture/tests unchanged.
-
-## Dataset download instructions
-`train.py` (and evaluation/visualization scripts) will **download MNIST automatically only if local `.npy` files are missing**, then cache them in `data/mnist/`. No repeated downloads when files already exist.
-
+## Launch the application
 ```bash
-source .venv/bin/activate
-python train.py   # downloads/caches MNIST on first run if needed
+cd /secondary/feature-shrinking-cnn
+.venv/bin/streamlit run app.py
+# or with activated env: streamlit run app.py
 ```
 
-## Preprocessing
-- Images converted to `float32` and normalized to `[0, 1]`.
-- Channel dimension added: `(28, 28) -> (28, 28, 1)`.
-- Labels kept as integers for `sparse_categorical_crossentropy`.
-- Expected shapes: train `(60000, 28, 28, 1)/(60000,)`, test `(10000, 28, 28, 1)/(10000,)`. No resizing.
+A `.streamlit/config.toml` is included to avoid inotify watcher overflow in large environments (file watcher disabled; restart Streamlit after code edits).
 
-## Training instructions
+## How to draw and upload digits
+1. **Draw:** use the interactive canvas (mouse/touch), white strokes on dark background. Use **Clear canvas** or **Reset input** as needed.
+2. **Upload:** PNG/JPG/JPEG/BMP supported (grayscale/RGB; inverted backgrounds handled).
+3. **Examples:** sample digits can be loaded from cached MNIST test data when available.
+
+The app preprocesses input to match MNIST conventions used by the model: grayscale, polarity normalization (bright digit on dark), crop/center/scale, resize to 28×28, normalize to `[0,1]`, shape **(1, 28, 28, 1)**. The **exact processed 28×28 tensor** sent to the model is always displayed.
+
+## How the animation works
+- **Inference once per input:** when you provide a digit, Python runs the trained CNN once and extracts actual intermediate tensors: input, `conv_1` (14×14×16), `conv_2` (12×12×32), `flatten` (4608), and `predictions` (10). Results are cached in Streamlit session/data cache (no repeated inference during animation or filter/stage changes beyond payload preparation from cached tensors).
+- **Precomputed animation data:** Python prepares step-by-step convolution data (receptive-field coordinates from TF stride/padding rules, actual kernel weights/bias, input patches, element-wise products, sums, ReLU, and actual activation values) and a browser payload.
+- **Browser rendering:** a lightweight HTML5 Canvas component animates the forward pass with `requestAnimationFrame` and UI controls (Play/Pause/Replay/Next/Prev, speed Slow/Normal/Fast). **JavaScript performs rendering/animation only** — it does not run TensorFlow or invent outputs.
+- **Conv1:** animated 3×3 receptive field sweeps 28×28 with stride 2 and SAME padding; each step highlights the input patch and corresponding 14×14 output cell and shows actual math.
+- **Conv2:** operates on the 14×14×16 stack with 3×3×16 kernels, stride 1, VALID padding; full calculation sums across all spatial positions and 16 channels (channel contributions shown for readability).
+- **Flatten:** visualizes unfolding of 12×12×32 into 4,608 values in Keras channels-last order.
+- **Dense/Output:** shows logits `xW+b` (actual weights/bias) and softmax probabilities for 10 classes; connections are visually aggregated for clarity (46,080 weights) while calculations remain exact.
+
+## How feature maps are extracted
+An intermediate Keras functional model is built from the **loaded trained model** (`model.inputs` → `conv_1`, `conv_2`, `flatten`, `predictions` outputs), reusing original layers/weights (no second trained model). For the current preprocessed input tensor, actual activations are:
+- Conv1: **(1, 14, 14, 16)** — 16 real feature maps
+- Conv2: **(1, 12, 12, 32)** — 32 real feature maps
+- Flatten: **(1, 4608)** — actual flattened vector
+- Predictions: **(1, 10)** — actual softmax probabilities (sum ≈ 1)
+
+Display normalization may be applied for visibility in grids; underlying numeric activations shown in explorers/inspectors are the real values.
+
+## How to interpret convolution visualizations
+- **Receptive field:** highlighted region in the input (or input stack) that contributes to one output cell.
+- **Kernel/weights:** trained 3×3 (Conv1) or 3×3×16 (Conv2) filter values for the selected output filter.
+- **Element-wise products → sum → +bias → ReLU:** manual step values computed in Python from actual tensors/weights and compared to the actual intermediate activation.
+- **SAME padding (Conv1):** TF-compatible padding/receptive-field coordinates are derived so the animated position matches real computation.
+- **VALID padding (Conv2):** no padding; spatial size reduces 14×14 → 12×12.
+- **Stride:** Conv1 moves by 2 pixels (downsampling), Conv2 by 1.
+
+## Training and evaluation (preserved)
+Existing scripts and artifacts are preserved:
 ```bash
-source .venv/bin/activate
-
-python train.py
+python train.py      # download/cache MNIST if missing, train (no retraining required for the app)
+python evaluate.py   # evaluate on test set and write results/*
+python visualize.py  # generate plots/feature-map figures in results/*
 ```
+The app’s dashboard reads actual files from `results/` (e.g. `training_history.json`, `evaluation_metrics.json`, reports, confusion matrix, curves). If an artifact is missing, the UI reports it as unavailable.
 
-**Configuration (as implemented):**
-- Epochs: 15 (max), batch size: 128, validation split: 0.1
-- Optimizer: Adam, loss: `sparse_categorical_crossentropy`, metrics: `accuracy`
-- Fixed random seed: 42 (reproducibility)
-- Callbacks: `ModelCheckpoint` (best by `val_accuracy` → `models/best_mnist_cnn.keras`), `EarlyStopping` (monitor `val_loss`, patience 3, restore best weights), `ReduceLROnPlateau` (monitor `val_loss`, factor 0.5, patience 2, min_lr 1e-6)
-- Test set is **not** used during training/selection. Saves `models/final_mnist_cnn.keras` and `results/training_history.json`.
-
-## Evaluation instructions
+## Run tests
 ```bash
-source .venv/bin/activate
-
-python evaluate.py
+cd /secondary/feature-shrinking-cnn
+PYTHONPATH=. .venv/bin/python -m pytest -q
+# or: pytest -v
 ```
 
-Evaluates the trained model (prefers best checkpoint) on the untouched 10,000-image MNIST test set. Computes test loss/accuracy, macro precision/recall/F1, confusion matrix, and per-class accuracy (scikit-learn). Saves:
-- `results/evaluation_report.txt`
-- `results/classification_report.txt`
-- `results/confusion_matrix.png`
-- `results/evaluation_metrics.json`
+Test coverage includes: architecture preservation (`tests/test_model.py`, `tests/test_architecture_preserved.py`), preprocessing/input handling, model loading & intermediate extraction, tensor dimensions (Conv1/Conv2/Flatten/predictions), probability sums, and numerical Conv1/Conv2 calculations verified against TensorFlow intermediate activations.
 
-## Visualization instructions
-```bash
-source .venv/bin/activate
-
-python visualize.py
-```
-
-Generates (in `results/`): training accuracy/loss curves, MNIST sample images with labels, sample predictions (image/actual/predicted/confidence), confusion matrix (if produced), and feature-map visualizations in `results/feature_maps/` (input 28×28, Conv1 14×14×16, Conv2 12×12×32) plus `feature_shrinking_explanation.txt`.
-
-## Actual training results (executed run)
-From `results/training_history.json`:
-- **Epochs completed:** 9 / 15 (early stopping triggered; best weights restored from epoch 6)
-- **Final recorded epoch (9) metrics:** train accuracy **0.99572**, train loss **0.01491**, val accuracy **0.98750**, val loss **0.05571**
-- **Best validation accuracy observed:** **0.98683** (epoch 6, saved as best checkpoint)
-
-| Epoch | Train acc | Train loss | Val acc | Val loss | LR |
-|---:|---:|---:|---:|---:|---:|
-| 1 | 0.91063 | 0.32161 | 0.97467 | 0.09472 | 0.001 |
-| 2 | 0.97324 | 0.08808 | 0.98317 | 0.06430 | 0.001 |
-| 3 | 0.98156 | 0.06140 | 0.98500 | 0.05697 | 0.001 |
-| 4 | 0.98572 | 0.04797 | 0.98633 | 0.05552 | 0.001 |
-| 5 | 0.98876 | 0.03898 | 0.98667 | 0.05499 | 0.001 |
-| 6 | 0.99072 | 0.03195 | 0.98683 | 0.05422 | 0.001 |
-| 7 | 0.99244 | 0.02605 | 0.98633 | 0.05462 | 0.001 |
-| 8 | 0.99387 | 0.02114 | 0.98600 | 0.05578 | 0.001 |
-| 9 | 0.99572 | 0.01491 | 0.98750 | 0.05571 | 0.0005 |
-
-## Actual test results (executed evaluation on 10,000 MNIST test images)
-From `results/evaluation_report.txt` / `classification_report.txt` (model: best checkpoint):
-- **Test accuracy:** **0.988600**
-- **Test loss:** **0.042186**
-- **Macro precision:** **0.988566**
-- **Macro recall:** **0.988410**
-- **Macro F1-score:** **0.988474**
-
-Per-class accuracy (0–9): 0.992857, 0.996476, 0.982558, 0.994059, 0.991853, 0.980942, 0.986430, 0.991245, 0.982546, 0.985134.
-
-## Generated artifacts
-- **Models:** `models/best_mnist_cnn.keras`, `models/final_mnist_cnn.keras`
-- **Data cache:** `data/mnist/x_train.npy`, `y_train.npy`, `x_test.npy`, `y_test.npy`
-- **Results:** `results/training_history.json`, `results/evaluation_metrics.json`, `results/evaluation_report.txt`, `results/classification_report.txt`, `results/training_accuracy.png`, `results/training_loss.png`, `results/confusion_matrix.png`, `results/mnist_samples.png`, `results/sample_predictions.png`
-- **Feature maps:** `results/feature_maps/input_28x28.png`, `conv1_14x14x16.png`, `conv2_12x12x32.png`, `feature_shrinking_explanation.txt`
-
-## Testing
-```bash
-source .venv/bin/activate
-pytest -v
-```
-Existing architecture tests in `tests/test_model.py` must remain passing (Sequential API, required layer order/parameters, shapes, and no pooling).
-
-## Project structure
-```text
-feature-shrinking-cnn/
-├── model.py
-├── train.py
-├── evaluate.py
-├── visualize.py
-├── data/mnist/           # cached MNIST .npy (not committed)
-├── models/
-├── results/
-│   └── feature_maps/
-├── tests/
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
+## Notes
+- `streamlit-drawable-canvas` behavior varies by version; the app requests `image_data` and handles canvas/input fallbacks defensively.
+- Headless run example: `streamlit run app.py --server.headless true --server.port 8501 --server.address 0.0.0.0`

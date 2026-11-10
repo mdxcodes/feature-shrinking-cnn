@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import numpy as np
-import plotly.graph_objects as go
+import pandas as pd
 import streamlit as st
+
+try:
+    import plotly.graph_objects as go
+except Exception:  # pragma: no cover
+    go = None
 
 from frontend.components import get_feature_extractor, load_inference_model
 
@@ -46,30 +51,34 @@ def render_confidence_chart(probs: np.ndarray, pred: int) -> None:
     values = (probs * 100.0).astype(float)
     colors = ["#38bdf8" if i == pred else "#334155" for i in range(10)]
 
-    fig = go.Figure(
-        go.Bar(
-            x=values,
-            y=labels,
-            orientation="h",
-            marker_color=colors,
-            text=[f"{v:.2f}%" for v in values],
-            textposition="outside",
-            cliponaxis=False,
+    if go is not None:
+        fig = go.Figure(
+            go.Bar(
+                x=values,
+                y=labels,
+                orientation="h",
+                marker_color=colors,
+                text=[f"{v:.2f}%" for v in values],
+                textposition="outside",
+                cliponaxis=False,
+            )
         )
-    )
-    fig.update_layout(
-        title="Confidence scores for digits 0–9",
-        xaxis_title="Probability (%)",
-        yaxis_title="Digit class",
-        xaxis=dict(range=[0, max(105.0, float(values.max()) + 8.0)]),
-        yaxis=dict(autorange="reversed"),
-        height=420,
-        margin=dict(l=30, r=40, t=50, b=40),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#e6edf7"),
-    )
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        fig.update_layout(
+            title="Confidence scores for digits 0–9",
+            xaxis_title="Probability (%)",
+            yaxis_title="Digit class",
+            xaxis=dict(range=[0, max(105.0, float(values.max()) + 8.0)]),
+            yaxis=dict(autorange="reversed"),
+            height=420,
+            margin=dict(l=30, r=40, t=50, b=40),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e6edf7"),
+        )
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    else:
+        st.markdown("**Confidence scores for digits 0–9 (%)**")
+        st.bar_chart(pd.DataFrame({"Probability (%)": values}, index=labels))
 
     total = float(probs.sum()) * 100.0
     st.caption(f"Predicted digit highlighted in blue. Sum of probabilities: **{total:.2f}%** (expected ≈ 100%).")

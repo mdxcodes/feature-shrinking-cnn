@@ -5,8 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
+
+try:
+    import plotly.graph_objects as go
+except Exception:  # pragma: no cover
+    go = None
 
 from frontend.components import load_json_artifact, read_text_artifact
 
@@ -44,9 +48,13 @@ def render_dashboard(results_dir: Path) -> None:
         if isinstance(per_class, dict) and per_class:
             digits = list(range(10))
             vals = [float(per_class.get(str(d), 0.0)) * 100.0 for d in digits]
-            fig = go.Figure(go.Bar(x=[str(d) for d in digits], y=vals, marker_color="#818cf8", text=[f"{v:.2f}%" for v in vals], textposition="outside"))
-            fig.update_layout(title="Per-class accuracy (test set)", xaxis_title="Digit", yaxis_title="Accuracy (%)", yaxis=dict(range=[0, 105]), height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            if go is not None:
+                fig = go.Figure(go.Bar(x=[str(d) for d in digits], y=vals, marker_color="#818cf8", text=[f"{v:.2f}%" for v in vals], textposition="outside"))
+                fig.update_layout(title="Per-class accuracy (test set)", xaxis_title="Digit", yaxis_title="Accuracy (%)", yaxis=dict(range=[0, 105]), height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
+                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            else:
+                st.markdown("**Per-class accuracy (test set)**")
+                st.bar_chart(pd.DataFrame({"Accuracy (%)": vals}, index=[str(d) for d in digits]))
     else:
         st.warning("`results/evaluation_metrics.json` not found. Run `python evaluate.py` to generate evaluation artifacts.")
 
@@ -66,18 +74,26 @@ def render_dashboard(results_dir: Path) -> None:
         st.caption("Source: `results/training_history.json`")
 
         if train_acc and val_acc:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(y=[v * 100 for v in train_acc], mode="lines+markers", name="Training accuracy", line=dict(color="#38bdf8")))
-            fig.add_trace(go.Scatter(y=[v * 100 for v in val_acc], mode="lines+markers", name="Validation accuracy", line=dict(color="#a78bfa")))
-            fig.update_layout(title="Training vs validation accuracy", xaxis_title="Epoch (0-indexed)", yaxis_title="Accuracy (%)", height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            if go is not None:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(y=[v * 100 for v in train_acc], mode="lines+markers", name="Training accuracy", line=dict(color="#38bdf8")))
+                fig.add_trace(go.Scatter(y=[v * 100 for v in val_acc], mode="lines+markers", name="Validation accuracy", line=dict(color="#a78bfa")))
+                fig.update_layout(title="Training vs validation accuracy", xaxis_title="Epoch (0-indexed)", yaxis_title="Accuracy (%)", height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
+                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            else:
+                st.markdown("**Training vs validation accuracy (%)**")
+                st.line_chart(pd.DataFrame({"Training": [v * 100 for v in train_acc], "Validation": [v * 100 for v in val_acc]}))
 
         if train_loss and val_loss:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(y=train_loss, mode="lines+markers", name="Training loss", line=dict(color="#38bdf8")))
-            fig.add_trace(go.Scatter(y=val_loss, mode="lines+markers", name="Validation loss", line=dict(color="#f97316")))
-            fig.update_layout(title="Training vs validation loss", xaxis_title="Epoch (0-indexed)", yaxis_title="Loss", height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            if go is not None:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(y=train_loss, mode="lines+markers", name="Training loss", line=dict(color="#38bdf8")))
+                fig.add_trace(go.Scatter(y=val_loss, mode="lines+markers", name="Validation loss", line=dict(color="#f97316")))
+                fig.update_layout(title="Training vs validation loss", xaxis_title="Epoch (0-indexed)", yaxis_title="Loss", height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
+                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            else:
+                st.markdown("**Training vs validation loss**")
+                st.line_chart(pd.DataFrame({"Training": train_loss, "Validation": val_loss}))
 
         # Tabular view
         rows = []

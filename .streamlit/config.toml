@@ -1,0 +1,7 @@
+[server]
+# Avoid inotify watch/queue overflow caused by large directories (e.g. .venv)
+fileWatcherType = "none"
+folderWatchBlacklist = [".venv", "venv", "__pycache__", ".pytest_cache", "data", "models", "results", ".git", "feature-shrinking-cnn-streamlit"]
+
+[browser]
+gatherUsageStats = false

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-import plotly.graph_objects as go
 import streamlit as st
+
+try:
+    import plotly.graph_objects as go
+except Exception:  # pragma: no cover
+    go = None
 
 
 PIPELINE = [
@@ -80,9 +84,14 @@ def render_architecture_explorer(model) -> None:
     spatial = [28 * 28, 14 * 14, 12 * 12]  # 784,196,144
     labels = ["28×28 (784)", "14×14 (196)", "12×12 (144)"]
     colors = ["#38bdf8", "#818cf8", "#22c55e"]
-    fig = go.Figure(go.Bar(x=stages, y=spatial, text=labels, textposition="outside", marker_color=colors))
-    fig.update_layout(title="Spatial positions per feature map across stages", yaxis_title="Spatial positions (H×W)", height=380, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    if go is not None:
+        fig = go.Figure(go.Bar(x=stages, y=spatial, text=labels, textposition="outside", marker_color=colors))
+        fig.update_layout(title="Spatial positions per feature map across stages", yaxis_title="Spatial positions (H×W)", height=380, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e6edf7"))
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    else:
+        import pandas as pd
+        st.markdown("**Spatial positions per feature map across stages**")
+        st.bar_chart(pd.DataFrame({"Spatial positions (H×W)": spatial}, index=stages))
 
     a, b, c = st.columns(3)
     a.metric("Input spatial positions", "784")
