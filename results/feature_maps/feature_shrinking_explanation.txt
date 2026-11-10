@@ -1,0 +1,16 @@
+Feature Shrinking in the CNN
+============================
+Original input: 28x28x1 (784 spatial values).
+
+Conv1 (16 filters, 3x3, stride 2, padding 'same', ReLU):
+- Stride 2 downsamples spatial dimensions by ~2 while 'same' padding preserves alignment.
+- Output: 14x14x16 feature maps, capturing low-level edges/strokes at reduced resolution.
+
+Conv2 (32 filters, 3x3, stride 1, padding 'valid', ReLU):
+- No downsampling by stride, but 'valid' padding removes border pixels (no zero-padding),
+  shrinking 14x14 -> 12x12 while increasing depth to 32 channels.
+- Output: 12x12x32 feature maps, capturing higher-level combinations/structures.
+
+Flatten: 12x12x32 = 4608 features fed to the classifier.
+No pooling layers are used; spatial reduction comes from strided convolution and valid padding,
+which lets learned filters control how information is downsampled while extracting structure.
